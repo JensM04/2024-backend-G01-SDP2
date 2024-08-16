@@ -1,0 +1,180 @@
+// Om prisma te gebruiken, importeer de client: 
+// const { PrismaClient } = require('@prisma/client');
+// const prisma = new PrismaClient();
+// En gebruik deze vervolgens om te queryen bv: prisma.kolomnaam.findAll()
+// Voor meer info: zie de documentatie: https://www.prisma.io/docs
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ADMINISTRATOR {
+  ID        Int       @id
+  GEBRUIKER GEBRUIKER @relation(fields: [ID], references: [ID], onUpdate: Restrict, map: "FK_ADMINISTRATOR_ID")
+}
+
+model B2BBEDRIJF {
+  BEDRIJFID                                       Int                      @id @default(autoincrement())
+  EMAIL                                           String?                  @unique @db.VarChar(255)
+  ISACTIEF                                        Boolean?                 @default(false)
+  NAAM                                            String?                  @db.VarChar(255)
+  SECTOR                                          String?                  @db.VarChar(255)
+  TELEFOONNUMMER                                  String?                  @db.VarChar(255)
+  UUIDVALUE                                       String?                  @unique @db.VarChar(255)
+  WEBSITEURL                                      String?                  @db.VarChar(255)
+  BUS                                             String?                  @db.VarChar(255)
+  GEMEENTE                                        String?                  @db.VarChar(255)
+  HUISNUMMER                                      Int?
+  POSTCODE                                        Int?
+  STRAAT                                          String?                  @db.VarChar(255)
+  BTWNr                                           String?                  @db.VarChar(255)
+  BETALING                                        BETALING[]
+  Bestelling_Bestelling_klantidToB2BBEDRIJF       Bestelling[]             @relation("Bestelling_klantidToB2BBEDRIJF")
+  Bestelling_Bestelling_leverancieridToB2BBEDRIJF Bestelling[]             @relation("Bestelling_leverancieridToB2BBEDRIJF")
+  KLANT_B2BBEDRIJF                                KLANT_B2BBEDRIJF[]
+  LEVERANCIER_B2BBEDRIJF                          LEVERANCIER_B2BBEDRIJF[]
+}
+
+model B2BBEDRIJFUPDATEREQUEST {
+  ID             Int     @id @default(autoincrement())
+  BEDRIJFID      Int
+  EMAIL          String? @db.VarChar(255)
+  NAAM           String? @db.VarChar(255)
+  SECTOR         String? @db.VarChar(255)
+  TELEFOONNUMMER String? @db.VarChar(255)
+  WEBSITEURL     String? @db.VarChar(255)
+  BUS            String? @db.VarChar(255)
+  GEMEENTE       String? @db.VarChar(255)
+  HUISNUMMER     Int?
+  POSTCODE       Int?
+  STRAAT         String? @db.VarChar(255)
+}
+
+model BETALING {
+  BETALINGID     Int         @id @default(autoincrement())
+  BETAALDATUM    DateTime?   @db.DateTime(0)
+  BETAALDEBEDRAG Decimal?    @db.Decimal(38, 0)
+  ISGOEDGEKEURD  Boolean?    @default(false)
+  ISVERWERKT     Boolean?    @default(false)
+  TEBETALEN      Decimal?    @db.Decimal(38, 0)
+  KlantID        Int?
+  BestellingID   Int?
+  Bestelling     Bestelling? @relation(fields: [BestellingID], references: [BESTELLINGID], onDelete: Restrict, onUpdate: Restrict, map: "FK_BETALING_BestellingID")
+  B2BBEDRIJF     B2BBEDRIJF? @relation(fields: [KlantID], references: [BEDRIJFID], onDelete: Restrict, onUpdate: Restrict, map: "FK_BETALING_KlantID")
+
+  @@index([BestellingID], map: "FK_BETALING_BestellingID")
+  @@index([KlantID], map: "FK_BETALING_KlantID")
+}
+
+model Bestelling {
+  BESTELLINGID                                    Int                   @id @default(autoincrement())
+  // TODO bespreek -> Bedrag berekende waarde?
+  BEDRAG                                          Decimal?              @db.Decimal(38, 2)
+  BESTELLINGDATUM                                 DateTime?             @db.DateTime(0)
+  // TODO bespreek -> Hoe integer based statussen aanpakken
+  BESTELLINGSTATUS                                Int?
+  BETAALSTATUS                                    Int?
+  UUIDVALUE                                       String?               @unique @db.VarChar(255)
+  BUS                                             String?               @db.VarChar(255)
+  GEMEENTE                                        String?               @db.VarChar(255)
+  HUISNUMMER                                      Int?
+  POSTCODE                                        Int?
+  STRAAT                                          String?               @db.VarChar(255)
+  klantid                                         Int?
+  leverancierid                                   Int?
+  BETALING                                        BETALING[]
+  B2BBEDRIJF_Bestelling_klantidToB2BBEDRIJF       B2BBEDRIJF?           @relation("Bestelling_klantidToB2BBEDRIJF", fields: [klantid], references: [BEDRIJFID], onDelete: Restrict, onUpdate: Restrict, map: "FK_Bestelling_klantid")
+  B2BBEDRIJF_Bestelling_leverancieridToB2BBEDRIJF B2BBEDRIJF?           @relation("Bestelling_leverancieridToB2BBEDRIJF", fields: [leverancierid], references: [BEDRIJFID], onDelete: Restrict, onUpdate: Restrict, map: "FK_Bestelling_leverancierid")
+  PRODUCTINBESTELLING                             PRODUCTINBESTELLING[]
+  NOTIFICATIE                                     NOTIFICATIE[]
+
+  @@index([klantid], map: "FK_Bestelling_klantid")
+  @@index([leverancierid], map: "FK_Bestelling_leverancierid")
+}
+
+model GEBRUIKER {
+  ID                     Int                      @id @default(autoincrement())
+  DTYPE                  String?                  @db.VarChar(31)
+  EMAIL                  String?                  @unique(map: "email") @db.VarChar(255)
+  GEBRUIKERSNAAM         String                   @unique(map: "gebruikersnaam") @db.VarChar(255)
+  ISWACHTWOORDVERANDERD  Boolean?                 @default(false)
+  // TODO bespreek: hoe rollen toepassen? 
+  ROL                    String?
+  SALT                   String?                  @db.VarChar(255)
+  WACHTWOORD_HASH        String?                  @db.VarChar(255)
+  ADMINISTRATOR          ADMINISTRATOR?
+  KLANT                  KLANT?
+  KLANT_B2BBEDRIJF       KLANT_B2BBEDRIJF[]
+  LEVERANCIER            LEVERANCIER?
+  LEVERANCIER_B2BBEDRIJF LEVERANCIER_B2BBEDRIJF[]
+  NOTIFICATIE            NOTIFICATIE[]
+}
+
+model KLANT {
+  ID        Int       @id
+  GEBRUIKER GEBRUIKER @relation(fields: [ID], references: [ID], onUpdate: Restrict, map: "FK_KLANT_ID")
+}
+
+model KLANT_B2BBEDRIJF {
+  bedrijf_BEDRIJFID Int
+  Klant_ID          Int        @unique
+  GEBRUIKER         GEBRUIKER  @relation(fields: [Klant_ID], references: [ID], onUpdate: Restrict, map: "FK_KLANT_B2BBEDRIJF_Klant_ID")
+  B2BBEDRIJF        B2BBEDRIJF @relation(fields: [bedrijf_BEDRIJFID], references: [BEDRIJFID], onUpdate: Restrict, map: "FK_KLANT_B2BBEDRIJF_bedrijf_BEDRIJFID")
+
+  @@id([bedrijf_BEDRIJFID, Klant_ID])
+  @@index([Klant_ID], map: "FK_KLANT_B2BBEDRIJF_Klant_ID")
+}
+
+model LEVERANCIER {
+  ID        Int       @id
+  GEBRUIKER GEBRUIKER @relation(fields: [ID], references: [ID], onUpdate: Restrict, map: "FK_LEVERANCIER_ID")
+}
+
+model LEVERANCIER_B2BBEDRIJF {
+  bedrijf_BEDRIJFID Int
+  Leverancier_ID    Int        @unique
+  GEBRUIKER         GEBRUIKER  @relation(fields: [Leverancier_ID], references: [ID], onUpdate: Restrict, map: "FK_LEVERANCIER_B2BBEDRIJF_Leverancier_ID")
+  B2BBEDRIJF        B2BBEDRIJF @relation(fields: [bedrijf_BEDRIJFID], references: [BEDRIJFID], onUpdate: Restrict, map: "FK_LEVERANCIER_B2BBEDRIJF_bedrijf_BEDRIJFID")
+
+  @@id([bedrijf_BEDRIJFID, Leverancier_ID])
+  @@index([Leverancier_ID], map: "FK_LEVERANCIER_B2BBEDRIJF_Leverancier_ID")
+}
+
+model PRODUCT {
+  ID                  Int                   @id @default(autoincrement())
+  NAAM                String                @db.VarChar(255)
+  AANTALINSTOCK       Int?
+  EENHEIDSPRIJS       Decimal?              @db.Decimal(38, 2)
+  PRODUCTINBESTELLING PRODUCTINBESTELLING[]
+}
+
+model PRODUCTINBESTELLING {
+  ID                         BigInt      @id @default(autoincrement())
+  AANTAL                     Int?
+  B2BBESTELLING_BESTELLINGID Int?
+  PRODUCTID                  Int?
+  Bestelling                 Bestelling? @relation(fields: [B2BBESTELLING_BESTELLINGID], references: [BESTELLINGID], onDelete: Restrict, onUpdate: Restrict, map: "FK_PRODUCTINBESTELLING_B2BBESTELLING_BESTELLINGID")
+  PRODUCT                    PRODUCT?    @relation(fields: [PRODUCTID], references: [ID], onDelete: Restrict, onUpdate: Restrict, map: "FK_PRODUCTINBESTELLING_PRODUCTNAAM")
+
+  @@index([B2BBESTELLING_BESTELLINGID], map: "FK_PRODUCTINBESTELLING_B2BBESTELLING_BESTELLINGID")
+  @@index([PRODUCTID], map: "FK_PRODUCTINBESTELLING_PRODUCTID")
+}
+
+model NOTIFICATIE {
+  id               Int        @id @default(autoincrement())
+  notificatieSoort String
+  datum            DateTime   @db.DateTime(0)
+  tekst            String     @db.VarChar(1000)
+  status           String     @db.VarChar(10)
+  avatar           String     @db.VarChar(25)
+  bestellingid     Int
+  gebruikerid      Int        @map("GEBRUIKERID")
+  BESTELLING       Bestelling @relation(fields: [bestellingid], references: [BESTELLINGID], onDelete: Cascade, onUpdate: Restrict, map: "FK_NOTIFICATIE_BESTELLINGID")
+  GEBRUIKER        GEBRUIKER  @relation(fields: [gebruikerid], references: [ID], onDelete: Cascade, onUpdate: Restrict, map: "FK_NOTIFICATIE_GEBRUIKERID")
+
+  @@map("NOTIFICATIE")
+}
